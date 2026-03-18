@@ -1,10 +1,25 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+	 <Configurations>Debug;Release</Configurations>
     <OutputType>Exe</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>DeepFocus</AssemblyName>
     <RootNamespace>DeepFocus</RootNamespace>
+	  <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="DeepFocus.Tests\" />
+  </ItemGroup>
+	<PropertyGroup Condition="$(Configuration.Contains('Debug'))">
+		<OutputPath>bin\Debug</OutputPath>
+		<AssemblyName>df</AssemblyName>
+		<DefineConstants>Debug;</DefineConstants>
+	</PropertyGroup>
+	<PropertyGroup Condition="$(Configuration.Contains('Release'))">
+		<OutputPath>C:\Users\D9A3V6\Tools\DeepFocus</OutputPath>
+		<AssemblyName>df</AssemblyName>
+		<DefineConstants>Release;</DefineConstants>
+	</PropertyGroup>
 </Project>

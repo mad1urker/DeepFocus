@@ -4,6 +4,7 @@ internal static class Program
 {
     private static int Main(string[] args)
     {
+
         var logPath = Path.Combine(AppContext.BaseDirectory, "deepfocus_log.json");
         var repository = new LogRepository(logPath);
         var manager = new SessionManager(repository);

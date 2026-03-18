@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DeepFocus": {
+      "commandName": "Project",
+      "commandLineArgs": "--help\r\n"
+    }
+  }
+}
