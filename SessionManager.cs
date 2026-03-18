@@ -4,11 +4,9 @@ namespace DeepFocus;
 
 public class SessionManager
 {
-    private const string DateFormat = "yyyy-MM-dd";
-    private const string TimeFormat = "HH:mm:ss";
-    private readonly LogRepository _repository;
+    private readonly ILogRepository _repository;
 
-    public SessionManager(LogRepository repository)
+    public SessionManager(ILogRepository repository)
     {
         _repository = repository;
     }
@@ -16,112 +14,65 @@ public class SessionManager
     public (bool Success, string Message) StartSession(DateTime now)
     {
         var sessions = _repository.LoadSessions();
-        var today = now.ToString(DateFormat);
-
-        if (sessions.Any(s => s.Date == today))
+        if (FindActiveSession(sessions) is not null)
         {
-            return (false, "Session for today already exists.");
+            return (false, "An active session already exists.");
         }
 
         sessions.Add(new Session
         {
-            Date = today,
-            Start = now.ToString(TimeFormat),
-            Pauses = new List<Pause>(),
+            Date = DateOnly.FromDateTime(now),
+            Start = TimeOnly.FromDateTime(now),
             End = null
         });
 
         _repository.SaveSessions(sessions);
-        return (true, $"Session started at {now.ToString(TimeFormat)}.");
+        return (true, $"Session started at {TimeOnly.FromDateTime(now):HH:mm:ss}.");
     }
 
-    public (bool Success, string Message) StartPause(DateTime now)
+    public (bool Success, string Message) EndSession(DateTime now)
     {
         var sessions = _repository.LoadSessions();
-        var activeSession = GetActiveSessionForToday(sessions, now);
-
+        var activeSession = FindActiveSession(sessions);
         if (activeSession is null)
         {
-            return (false, "No active session.");
+            return (false, "No active session to end.");
         }
 
-        var openPause = activeSession.Pauses.LastOrDefault(p => p.PauseEnd is null);
-        if (openPause is not null)
-        {
-            return (false, "Already on pause. Use 'df pause-end'.");
-        }
-
-        activeSession.Pauses.Add(new Pause
-        {
-            PauseStart = now.ToString(TimeFormat),
-            PauseEnd = null
-        });
-
+        activeSession.End = TimeOnly.FromDateTime(now);
         _repository.SaveSessions(sessions);
-        return (true, $"Pause started at {now.ToString(TimeFormat)}.");
+
+        return (true, $"Session ended at {activeSession.End:HH:mm:ss}.");
     }
 
-    public (bool Success, string Message) EndPause(DateTime now)
+    public Session? GetActiveSession()
     {
         var sessions = _repository.LoadSessions();
-        var activeSession = GetActiveSessionForToday(sessions, now);
-
-        if (activeSession is null)
-        {
-            return (false, "No active pause.");
-        }
-
-        var openPause = activeSession.Pauses.LastOrDefault(p => p.PauseEnd is null);
-        if (openPause is null)
-        {
-            return (false, "No active pause.");
-        }
-
-        openPause.PauseEnd = now.ToString(TimeFormat);
-        _repository.SaveSessions(sessions);
-        return (true, $"Pause ended at {now.ToString(TimeFormat)}.");
-    }
-
-    public (bool Success, string Message, string? Warning) EndSession(DateTime now)
-    {
-        var sessions = _repository.LoadSessions();
-        var activeSession = GetActiveSessionForToday(sessions, now);
-
-        if (activeSession is null)
-        {
-            return (false, "No active session to end.", null);
-        }
-
-        string? warning = null;
-        var openPause = activeSession.Pauses.LastOrDefault(p => p.PauseEnd is null);
-        if (openPause is not null)
-        {
-            var closeTime = now.ToString(TimeFormat);
-            openPause.PauseEnd = closeTime;
-            warning = $"Warning: open pause was automatically closed at {closeTime}.";
-        }
-
-        activeSession.End = now.ToString(TimeFormat);
-        _repository.SaveSessions(sessions);
-
-        return (true, $"Session ended at {activeSession.End}.", warning);
+        return FindActiveSession(sessions);
     }
 
     public List<Session> GetSessions(bool todayOnly, DateTime now)
     {
-        var sessions = _repository.LoadSessions();
+        var sessions = _repository.LoadSessions()
+            .OrderBy(s => s.Date)
+            .ThenBy(s => s.Start)
+            .ToList();
+
         if (!todayOnly)
         {
-            return sessions.OrderBy(s => s.Date).ToList();
+            return sessions;
         }
 
-        var today = now.ToString(DateFormat);
-        return sessions.Where(s => s.Date == today).OrderBy(s => s.Date).ToList();
+        var today = DateOnly.FromDateTime(now);
+        return sessions.Where(s => s.Date == today).ToList();
     }
 
-    private Session? GetActiveSessionForToday(List<Session> sessions, DateTime now)
+    private static Session? FindActiveSession(List<Session> sessions)
     {
-        var today = now.ToString(DateFormat);
-        return sessions.FirstOrDefault(s => s.Date == today && s.End is null);
+        return sessions
+            .Where(s => s.End is null)
+            .OrderBy(s => s.Date)
+            .ThenBy(s => s.Start)
+            .LastOrDefault();
     }
 }

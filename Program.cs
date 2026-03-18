@@ -17,6 +17,19 @@ internal static class Program
 
         var now = DateTime.Now;
 
+        try
+        {
+            return Route(args, now, manager, renderer);
+        }
+        catch (InvalidOperationException ex)
+        {
+            renderer.RenderMessage(ex.Message);
+            return 1;
+        }
+    }
+
+    private static int Route(string[] args, DateTime now, SessionManager manager, ConsoleRenderer renderer)
+    {
         switch (args[0])
         {
             case "start":
@@ -25,30 +38,19 @@ internal static class Program
                 renderer.RenderMessage(result.Message);
                 return result.Success ? 0 : 1;
             }
-            case "pause-st":
-            {
-                var result = manager.StartPause(now);
-                renderer.RenderMessage(result.Message);
-                return result.Success ? 0 : 1;
-            }
-            case "pause-end":
-            {
-                var result = manager.EndPause(now);
-                renderer.RenderMessage(result.Message);
-                return result.Success ? 0 : 1;
-            }
             case "end":
             {
                 var result = manager.EndSession(now);
-                if (!string.IsNullOrWhiteSpace(result.Warning))
-                {
-                    renderer.RenderMessage(result.Warning);
-                }
-
                 renderer.RenderMessage(result.Message);
                 return result.Success ? 0 : 1;
             }
-            case "focus-check":
+            case "status":
+            {
+                var active = manager.GetActiveSession();
+                renderer.RenderStatus(active, now);
+                return 0;
+            }
+            case "logs":
             {
                 var todayOnly = args.Length > 1 && args[1] == "--today";
                 if (args.Length > 1 && !todayOnly)
